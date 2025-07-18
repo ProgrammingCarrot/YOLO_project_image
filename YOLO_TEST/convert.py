@@ -1,8 +1,15 @@
 from ultralytics import YOLO
+import shutil
 
 model = YOLO("best.pt")
 model.export(format="engine")
 
 tensorrt_model = YOLO("best.engine")
 
-results = tensorrt.model("https://ultralytics.com/images/bus.jpg")
+source = "best.onnx"
+destination = "cpp"
+
+if tensorrt_model:
+    shutil.move(source,destination)
+    print("Has moved ONNX model to folder!")
+

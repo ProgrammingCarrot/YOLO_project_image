@@ -12,3 +12,6 @@ target_link_libraries(test PRIVATE
 		      realsense2::realsense2
 		      ${OpenCV_LIBS}
 		      )
+
+set_target_properties(test PROPERTIES
+		      RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
