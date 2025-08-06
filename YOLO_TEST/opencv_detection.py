@@ -50,7 +50,7 @@ def getColors(cls_num):
     return tuple(color)
 
 try:
-    model = model("best.engine","best.pt")
+    model = model("best.onnx","best.pt") # use clean-suit detection model
     profile = pipeline.start(config)
 
     align_to = rs.stream.color
@@ -72,7 +72,7 @@ try:
         # Get detect result and print on the screen
         class_names = result[0].names
         for box in result[0].boxes:
-            if box.conf[0] > 0.45:
+            if box.conf[0] > 0.5:
                 [x1,y1,x2,y2] = box.xyxy[0]
                 x1,y1,x2,y2 = int(x1),int(y1),int(x2),int(y2)
                 cls = int(box.cls[0])
@@ -87,7 +87,7 @@ try:
                     result_label = (x1,y1)
 
                 cv2.rectangle(color_image,(x1,y1),(x2,y2),color,3)
-                cv2.putText(color_image,f'{class_name},{distance:.2f}m',
+                cv2.putText(color_image,f'{class_name},{distance:.2f}m \n {box.conf[0]}',
                             result_label,cv2.FONT_HERSHEY_SIMPLEX,0.8,color,2)
 
 

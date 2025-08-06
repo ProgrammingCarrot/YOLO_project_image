@@ -1,5 +1,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/core/ocl.hpp>
 #include <opencv2/dnn.hpp>
 #include <librealsense2/rs.hpp>
 #include <cmath>
@@ -62,6 +64,7 @@ float get_distance(const int x,const int y,rs2::depth_frame depth,rs2::depth_sen
 	return distance;
 }
 
+
 // debug
 cv::Mat convert_blob(cv::Mat blob){
 
@@ -79,17 +82,18 @@ cv::Mat convert_blob(cv::Mat blob){
 }
 
 // resize image size to match model input
-cv::Mat image_resize(const cv::Mat& image,const cv::Size& target,const cv::Scalar& color= cv::Scalar(114,114,114)){
+cv::UMat image_resize(const cv::UMat& image,const cv::Size& target,const cv::Scalar& color= cv::Scalar(114,114,114)){
 	int top = (target.height - screen_output.input_h) / 2;
 	int bottom = target.height - screen_output.input_h - top;
 	// because x = 640, so no need to fill right and left
-	cv::Mat padding_image;
+	cv::UMat padding_image;
 	cv::copyMakeBorder(image,padding_image,top,bottom,0,0,cv::BORDER_CONSTANT,color);
 	
 	return padding_image;
 }
 
 int main(int argc,char *argv[]) try{
+	cv::ocl::setUseOpenCL(true);
 	// Detect if in debug mode
 	if(std::string(argv[1]) == "debug"){
 		std::cout << "THIS IS DEBUG MODE!" << std::endl;
@@ -135,8 +139,9 @@ int main(int argc,char *argv[]) try{
 			continue;
 		}
 		
-		cv::Mat image(cv::Size(w,h),CV_8UC3,(void*)color.get_data(),cv::Mat::AUTO_STEP);
-		cv::Mat input_image = image_resize(image,target_size);
+		cv::Mat cpu_image(cv::Size(w,h),CV_8UC3,(void*)color.get_data(),cv::UMat::AUTO_STEP);
+		cv::UMat image = cpu_image.getUMat(cv::ACCESS_READ);
+		cv::UMat input_image = image_resize(image,target_size);
 		
 		// Model input Handle
                 blob = cv::dnn::blobFromImage(input_image,1/255.0,target_size,cv::Scalar(0,0,0),true,false);
@@ -173,7 +178,7 @@ int main(int argc,char *argv[]) try{
 		}
 		
 		// set NMS boxes
-		cv::dnn::NMSBoxes(NMS.boxes,NMS.confidence,0.6f,0.8f,NMS.indices);
+		cv::dnn::NMSBoxes(NMS.boxes,NMS.confidence,0.45f,0.7f,NMS.indices);
 		for(int i = 0; i < NMS.indices.size(); ++i){
 			int index = NMS.indices[i];
 			int y_offset = 0;
@@ -190,7 +195,7 @@ int main(int argc,char *argv[]) try{
 			// get distance
 			float instance_distance = get_distance(NMS.center[i].x,NMS.center[i].y,depth,d_sensor);
 			std::stringstream label_stream;
-			label_stream << classes[0] << "\n" << std::setprecision(2) << instance_distance << "meters";
+			label_stream << classes[0] << std::setprecision(2) << instance_distance << "meters" << NMS.confidence[i] << std::setprecision(2);
 			std::string label = label_stream.str();
 
 			cv::rectangle(image,cv::Point(NMSbox.x,NMSbox.y),cv::Point(NMSbox.x+NMSbox.width, NMSbox.y+NMSbox.height),cv::Scalar(0,0,255),2,8);
